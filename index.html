@@ -125,6 +125,8 @@ footer h2{font:400 clamp(48px,13vw,80px) var(--script);margin:0}
 .lantern{position:fixed;bottom:-80px;width:34px;height:46px;border-radius:12px 12px 8px 8px;background:radial-gradient(circle at 50% 70%,#fff0b0,#f2a33a 60%,#c4631c);box-shadow:0 0 28px 10px #f6b94a88;pointer-events:none;z-index:70;animation:float 7s ease-in forwards}
 @keyframes float{to{transform:translate(var(--s),-115vh);opacity:0}}
 button,a.btn{max-width:100%;text-align:center}
+.mus{display:none;position:fixed;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:55;padding:8px 18px}
+.mus.show{display:inline-flex}
 @media(max-width:359px){
  section{padding:60px 16px}
  .cd{grid-template-columns:1fr 1fr}
@@ -260,6 +262,10 @@ button,a.btn{max-width:100%;text-align:center}
 </footer>
 </main>
 
+<!-- MUSIC: plays after the guest taps the seal; put music.mp3 beside index.html -->
+<audio id="bgm" src="music.mp3" loop preload="auto"></audio>
+<button class="mus" id="mus" aria-label="Turn music off">&#9834; On</button>
+
 <!-- LIGHTBOX -->
 <div id="lb" role="dialog" aria-modal="true" aria-label="Photo viewer"><div class="c" id="lbc"></div><img id="lbi" alt="">
  <button id="lbP" aria-label="Previous photo">&#8249;</button><button id="lbN" aria-label="Next photo">&#8250;</button><button id="lbX" aria-label="Close">&#10005;</button></div>
@@ -305,7 +311,7 @@ const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.targ
 document.querySelectorAll(".rv").forEach(n=>RM?n.classList.add("in"):io.observe(n));
 /* ----- OPENING REVEAL ----- */
 let opened=false;
-function open(){if(opened)return;opened=true;const env=$("#env"),seal=$("#seal");
+function open(){if(opened)return;opened=true;playMusic();const env=$("#env"),seal=$("#seal");
  const done=()=>{$("#reveal").classList.add("gone");document.body.classList.remove("lock");startFx()};
  if(RM){done();return}
  seal.classList.add("go");
@@ -315,6 +321,18 @@ function open(){if(opened)return;opened=true;const env=$("#env"),seal=$("#seal")
 $("#seal").onclick=open;
 addEventListener("keydown",e=>{if(!opened&&(e.key==="Enter"||e.key===" ")){e.preventDefault();open()}});
 setTimeout(()=>$("#seal").focus(),100);
+/* ----- MUSIC (starts on the seal tap, which browsers allow) ----- */
+const bgm=$("#bgm"),mb=$("#mus");let want=false;bgm.volume=.6;
+bgm.addEventListener("canplay",()=>mb.classList.add("show"),{once:true});
+function setMus(v){want=v;mb.innerHTML=v?"&#9834; On":"&#9834; Off";mb.setAttribute("aria-label",v?"Turn music off":"Turn music on")}
+function playMusic(){const p=bgm.play();if(p&&p.then)p.then(()=>setMus(true)).catch(()=>setMus(false))}
+let userOff=false;
+mb.onclick=()=>{if(want){userOff=true;bgm.pause();setMus(false)}else{userOff=false;playMusic()}};
+/* Try to start straight away; if the browser blocks it, start on the guest's first touch, click or key */
+playMusic();
+const firstGo=()=>{["pointerdown","touchend","keydown"].forEach(t=>removeEventListener(t,firstGo,true));if(!want&&!userOff)playMusic()};
+["pointerdown","touchend","keydown"].forEach(t=>addEventListener(t,firstGo,true));
+document.addEventListener("visibilitychange",()=>{if(document.hidden)bgm.pause();else if(want)bgm.play().catch(()=>{})});
 /* ----- PARALLAX HERO ----- */
 if(!RM)addEventListener("scroll",()=>{const y=scrollY;if(y<innerHeight*1.2)$("#heroBg").style.transform=`translate3d(0,${y*.35}px,0)`},{passive:true});
 /* ----- PETALS + GLITTER ----- */
